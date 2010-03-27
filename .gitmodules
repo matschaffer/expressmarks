@@ -1,0 +1,9 @@
+[submodule "vendor/express"]
+	path = vendor/express
+	url = git://github.com/visionmedia/express.git
+[submodule "vendor/riak-js"]
+	path = vendor/riak-js
+	url = git://github.com/frank06/riak-js.git
+[submodule "vendor/redis-node-client"]
+	path = vendor/redis-node-client
+	url = git://github.com/fictorial/redis-node-client.git
