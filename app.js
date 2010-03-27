@@ -5,11 +5,14 @@ require.paths.unshift("./vendor/riak-js/lib");
 require('express');
 require('express/plugins');
 
-var redis = require('redisclient'),
-    riak = require('riak-node');
+configure(function() {
+  set('root', __dirname);
+})
 
-get('/', function () {
-  this.halt(200, "hello world");
-});
+var redis = require('redisclient'),
+    riak = require('riak-node'),
+    handlers = require('./handlers');
+
+get('/', handlers.get);
 
 run();
