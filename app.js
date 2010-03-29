@@ -1,7 +1,4 @@
-require.paths.unshift("./vendor/express/lib");
-require.paths.unshift("./vendor/redis-node-client");
-require.paths.unshift("./vendor/riak-js/lib");
-
+require('./paths');
 require('express');
 require('express/plugins');
 
