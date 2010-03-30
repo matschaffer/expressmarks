@@ -9,11 +9,8 @@ Bookmark.create(user, {
   title: "Mat Schaffer's blog",
   notes: "My personal blog. Not sure why I'd bookmark it.",
   tags: ["programming", "ruby", "javascript", "awesome"]
-}, function() {
-  sys.puts("Finished storage with these args to callback.");
-  sys.p(arguments);
-  Bookmark.findByUser(user, function() {
-    sys.puts("Finished lookup with these args");
-    sys.p(arguments);
-  });
+}, function(bookmark) {
+  sys.puts("Stored this bookmark:");
+  sys.p(bookmark);
+  Bookmark.deleteAll(function() { sys.puts('Finished cleaning up.'); });
 });
