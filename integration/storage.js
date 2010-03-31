@@ -14,7 +14,8 @@ Bookmark.store(user, {
   sys.p(bookmark);
   
   Bookmark.findByTags("programming", "ruby", "by:user1", function(bookmarks) {
-    sys.p(bookmarks)
+    sys.p(bookmarks);
+    Bookmark.index.quit();
   })
   
   //bookmark.url = "http://www.google.com"
