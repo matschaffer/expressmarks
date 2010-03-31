@@ -61,11 +61,12 @@ Bookmark.mapKeys = function(v, keydata, keys) {
   }
 };
 
-Bookmark.findByTags = function() {
-  var self = this,
-      tags = arguments.values,
-      fn = tags.pop()
+Bookmark.findByTags = function(tags, fn) {
+  var self = this
+
   this.index.sinter.apply(this.index, tags.concat(function(err, keys) {
+    if (!keys) { fn([]); return }
+
     var query = { inputs: self.bucket,
                   query: [ {map: {source: self.mapKeys, arg: keys}} ] };
     self.db.mapReduce(query)(function(docs) {

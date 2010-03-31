@@ -1,6 +1,6 @@
-require('./paths');
-require('express');
-require('express/plugins');
+require('./paths')
+require('express')
+require('express/plugins')
 
 configure(function() {
   set('root', __dirname);
@@ -8,8 +8,17 @@ configure(function() {
 
 var redis = require('redisclient'),
     riak = require('riak-node'),
-    handlers = require('./handlers');
+    handlers = require('./handlers'),
+    sys = require('sys'),
+    Bookmark = require('bookmark').Bookmark;
 
-get('/', handlers.get);
+get('/:user?/*', function(user, tagPath) {
+  var self = this,
+      tags = tagPath.split('/')
 
-run();
+  Bookmark.findByTags(tags.concat("by:" + user), function(bookmarks) {
+    self.render('index.haml.html', { locals: { bookmarks: bookmarks }})
+  })
+})
+
+run()
