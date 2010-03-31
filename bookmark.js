@@ -4,41 +4,91 @@ var Riak = require('riak-node'),
     Redis = require('redisclient'),
     sys = require('sys'),
     async = require('async_utils'),
-    Bookmark = exports.Bookmark = function() {};
+    Bookmark = exports.Bookmark = function(user, params) {
+      this.user = user
+      this.merge(params)
+    };
+
+Bookmark.prototype = {
+  get doc() {
+    var doc = {}
+    doc.merge(this)
+    delete doc.id
+    return doc
+  },
+  
+  get indexes() {
+    return this.tags.concat('by:' + this.user)
+  }
+}
 
 Bookmark.db = new Riak.Client();
 Bookmark.db.defaults.debug = false;
+Bookmark.bucket = "bookmarks";
 
 Bookmark.index = new Redis.Client();
 
-Bookmark.bucket = "bookmarks";
-
-Bookmark.create = function(user, params, fn) {
+Bookmark.store = function(user, params, fn) {
   var key, tag, self = this,
-      bookmark = new Bookmark();
+      bookmark = new Bookmark(user, params);
 
-  params.user = user
-  bookmark.mergeDeep(params)
+  this.db.save(this.bucket, bookmark.id, bookmark.doc)(function(err, resp) {
+    bookmark.id = bookmark.id || resp.headers.location.split('/').last;
 
-  this.db.save(this.bucket, null, params)(function(err, resp) {
-    bookmark.id = resp.headers.location.split('/').last;
-
-    params.tags.push("by:user");
-    
-    async.each(params.tags, function(tag, next) {
+    async.each(bookmark.indexes, function(tag, next) {
       self.index.sadd(tag, bookmark.id, function() {
         next();
       });
     }, function() {
-      self.index.quit();
       if (fn) fn(bookmark);
     });
   });
 };
 
-Bookmark.findByUser = function(user, fn) {
-  sys.puts("not implemented yet");
+Bookmark.find = function(id, fn) {
+  this.db.get(this.bucket, id)(function(doc) {
+    if (fn) fn(new Bookmark(doc.user, doc))
+  })
+}
+
+Bookmark.mapKeys = function(v, keydata, keys) {
+  if (v.values && keys.indexOf(v.key) != -1) {
+    var data = Riak.mapValuesJson(v)[0];
+    data.id = v.key;
+    return [data];
+  } else {
+    return [];
+  }
 };
+
+Bookmark.findByTags = function() {
+  var self = this,
+      tags = arguments.values,
+      fn = tags.pop()
+  this.index.sinter.apply(this.index, tags.concat(function(err, keys) {
+    var query = { inputs: self.bucket,
+                  query: [ {map: {source: self.mapKeys, arg: keys}} ] };
+    self.db.mapReduce(query)(function(docs) {
+      fn(docs.map(function(doc) {
+        return new Bookmark(doc.user, doc)
+      }))
+    })
+  }))
+}
+
+Bookmark.findByUser = function(user, fn) {
+  var bookmarks = [], self = this
+  this.index.smembers("by:" + user, function(err, keys) {
+    async.each(keys, function(key, next) {
+      self.db.get(self.bucket, key)(function(doc) {
+        bookmarks.push(new Bookmark(user, doc))
+        next()
+      })
+    }, function() {
+      if (fn) fn(bookmarks)
+    })
+  })
+}
 
 Bookmark.deleteDocuments = function(fn) {
   var keys, self = this;
@@ -56,10 +106,7 @@ Bookmark.deleteTags = function(fn) {
   this.index.keys('*', function(err, keys) {
     async.each(keys, function(key, next) {
       self.index.expire(key, 1, next);
-    }, function() {
-      self.index.quit()
-      if (fn) fn()
-    })
+    }, fn)
   });
 };
 
@@ -67,7 +114,4 @@ Bookmark.deleteAll = function(fn) {
   Bookmark.deleteDocuments(function() {
     Bookmark.deleteTags(fn);
   });
-};
-
-Bookmark.prototype = {
 };

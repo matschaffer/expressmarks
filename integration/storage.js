@@ -4,7 +4,7 @@ var Bookmark = require('bookmark').Bookmark,
     sys = require('sys'),
     user = "user1";
 
-Bookmark.create(user, {
+Bookmark.store(user, {
   url: "http://www.matschaffer.com",
   title: "Mat Schaffer's blog",
   notes: "My personal blog. Not sure why I'd bookmark it.",
@@ -12,5 +12,24 @@ Bookmark.create(user, {
 }, function(bookmark) {
   sys.puts("Stored this bookmark:");
   sys.p(bookmark);
-  Bookmark.deleteAll(function() { sys.puts('Finished cleaning up.'); });
+  
+  Bookmark.findByTags("programming", "ruby", "by:user1", function(bookmarks) {
+    sys.p(bookmarks)
+  })
+  
+  //bookmark.url = "http://www.google.com"
+  //Bookmark.store(bookmark.user, bookmark, function() {
+  //  sys.puts("updated bookmark "+bookmark.id)
+  //  Bookmark.index.quit();
+  //});
+  
+  //Bookmark.find('Cgvr14tMFlWnFyc6nlKG56247OC', function() { sys.p(arguments); })
+  
+  //Bookmark.findByUser(user, function(bookmarks) {
+  //  sys.p(bookmarks)
+  //  Bookmark.deleteAll(function() { 
+  //    sys.puts('Finished cleaning up.'); 
+  //    Bookmark.index.quit();
+  //  });
+  //});
 });
