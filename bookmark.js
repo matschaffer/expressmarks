@@ -63,7 +63,7 @@ Bookmark.mapKeys = function(v, keydata, keys) {
 
 Bookmark.findByTags = function(tags, fn) {
   var self = this
-
+  sys.puts("Finding tags: " + sys.inspect(tags));
   this.index.sinter.apply(this.index, tags.concat(function(err, keys) {
     if (!keys) { fn([]); return }
 
