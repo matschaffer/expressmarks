@@ -116,3 +116,12 @@ Bookmark.deleteAll = function(fn) {
     Bookmark.deleteTags(fn);
   });
 };
+
+Bookmark.open = function(fn) {
+  Bookmark.index.addListener("connect", fn);
+  Bookmark.index.connect();
+}
+
+Bookmark.close = function() {
+  Bookmark.index.quit()
+}
