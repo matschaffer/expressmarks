@@ -7,9 +7,6 @@
 [submodule "vendor/redis-node-client"]
 	path = vendor/redis-node-client
 	url = git://github.com/fictorial/redis-node-client.git
-[submodule "vendor/node-xml"]
-	path = vendor/node-xml
-	url = git://github.com/robrighter/node-xml.git
 [submodule "vendor/hashlib"]
 	path = vendor/hashlib
 	url = git://github.com/brainfucker/hashlib.git
