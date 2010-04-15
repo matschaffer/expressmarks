@@ -1,20 +1,18 @@
-require('ext');
+require('ext')
 
-var Riak = require('riak-node'),
-    Redis = require('redisclient'),
-    sys = require('sys'),
-    async = require('async_utils'),
-    Bookmark = exports.Bookmark = function(user, params) {
+var Redis = require('redisclient')
+   ,sys = require('sys')
+   ,async = require('async_utils')
+   ,hashlib = require("hashlib")
+   ,Bookmark = exports.Bookmark = function(user, params) {
       this.user = user
       this.merge(params)
-    };
+      this.id = this.id || hashlib.sha256(this.url)
+    }
 
 Bookmark.prototype = {
   get doc() {
-    var doc = {}
-    doc.merge(this)
-    delete doc.id
-    return doc
+    return JSON.stringify(this)
   },
   
   get indexes() {
@@ -22,106 +20,64 @@ Bookmark.prototype = {
   }
 }
 
-Bookmark.db = new Riak.Client();
-Bookmark.db.defaults.debug = false;
-Bookmark.bucket = "bookmarks";
-
-Bookmark.index = new Redis.Client();
+Bookmark.db = new Redis.Client();
 
 Bookmark.store = function(user, params, fn) {
   var key, tag, self = this,
       bookmark = new Bookmark(user, params);
 
-  this.db.save(this.bucket, bookmark.id, bookmark.doc)(function(err, resp) {
-    bookmark.id = bookmark.id || resp.headers.location.split('/').last;
-
+  this.db.set(bookmark.id, bookmark.doc, function() {
     async.each(bookmark.indexes, function(tag, next) {
-      self.index.sadd(tag, bookmark.id, function() {
-        next();
-      });
+      self.db.sadd(tag, bookmark.id, next);
     }, function() {
       if (fn) fn(bookmark);
     });
-  });
-};
+  })
+}
 
 Bookmark.find = function(id, fn) {
-  this.db.get(this.bucket, id)(function(doc) {
+  this.db.get(id, function(doc) {
     if (fn) fn(new Bookmark(doc.user, doc))
   })
 }
 
-Bookmark.mapKeys = function(v, keydata, keys) {
-  if (v.values && keys.indexOf(v.key) != -1) {
-    var data = Riak.mapValuesJson(v)[0];
-    data.id = v.key;
-    return [data];
-  } else {
-    return [];
-  }
-};
-
 Bookmark.findByTags = function(tags, fn) {
   var self = this
-  sys.puts("Finding tags: " + sys.inspect(tags));
-  this.index.sinter.apply(this.index, tags.concat(function(err, keys) {
+  this.db.sinter.apply(this.db, tags.concat(function(err, keys) {
     if (!keys) { fn([]); return }
-
-    var query = { inputs: self.bucket,
-                  query: [ {map: {source: self.mapKeys, arg: keys}} ] };
-    self.db.mapReduce(query)(function(docs) {
-      fn(docs.map(function(doc) {
-        return new Bookmark(doc.user, doc)
-      }))
+    self.db.mget(keys, function(err, docs) {
+      fn(self.parseDocs(docs))
     })
   }))
 }
 
+Bookmark.parseDocs = function (docs) {
+  return docs.map(function(doc) {
+    var data = JSON.parse(doc)
+    return new Bookmark(data.user, data)
+  })
+}
+
 Bookmark.findByUser = function(user, fn) {
-  var bookmarks = [], self = this
+  var self = this
   this.index.smembers("by:" + user, function(err, keys) {
-    async.each(keys, function(key, next) {
-      self.db.get(self.bucket, key)(function(doc) {
-        bookmarks.push(new Bookmark(user, doc))
-        next()
-      })
-    }, function() {
-      if (fn) fn(bookmarks)
+    self.db.mget(keys, function(err, docs) {
+      fn(self.parseDocs(docs))
     })
   })
 }
 
-Bookmark.deleteDocuments = function(fn) {
-  var keys, self = this;
-  this.db.get(this.bucket)(function(resp) {
+Bookmark.deleteAll = function(fn) {
+  var self = this
+  this.db.keys("*", function(keys) {
     async.each(resp.keys, function(key, next) {
-      self.db.remove(self.bucket, key)(function() {
+      self.db.expire(key, 0, function() {
         next()
       })
     }, fn)
   })
 }
 
-Bookmark.deleteTags = function(fn) {
-  var key, self = this;
-  this.index.keys('*', function(err, keys) {
-    async.each(keys, function(key, next) {
-      self.index.expire(key, 1, next);
-    }, fn)
-  });
-};
-
-Bookmark.deleteAll = function(fn) {
-  Bookmark.deleteDocuments(function() {
-    Bookmark.deleteTags(fn);
-  });
-};
-
-Bookmark.open = function(fn) {
-  Bookmark.index.addListener("connect", fn);
-  Bookmark.index.connect();
-}
-
 Bookmark.close = function() {
-  Bookmark.index.quit()
+  Bookmark.db.quit()
 }

@@ -2,7 +2,7 @@ require("../paths");
 
 var Bookmark = require('bookmark').Bookmark,
     sys = require('sys'),
-    user = "user1";
+    user = 1;
 
 Bookmark.store(user, {
   url: "http://www.matschaffer.com",
@@ -13,9 +13,10 @@ Bookmark.store(user, {
   sys.puts("Stored this bookmark:");
   sys.p(bookmark);
   
-  Bookmark.findByTags("programming", "ruby", "by:user1", function(bookmarks) {
+  Bookmark.findByTags(["programming", "ruby", "by:1"], function(bookmarks) {
+    sys.puts("Found these marked by programming, ruby, by:1")
     sys.p(bookmarks);
-    Bookmark.index.quit();
+    Bookmark.close();
   })
   
   //bookmark.url = "http://www.google.com"
