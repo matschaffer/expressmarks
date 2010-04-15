@@ -1,4 +1,4 @@
-require("../paths");
+require("../test-helper");
 
 var Bookmark = require('bookmark').Bookmark,
     sys = require('sys'),

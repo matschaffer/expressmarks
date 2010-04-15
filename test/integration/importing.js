@@ -13,14 +13,12 @@ fs.readFile(dataFile, function(err, data) {
     read: function() {
       match = this.buffer.match(/<post [^>]*>/)
       if (match) {
-      sys.puts("processing " + match);
         str = match[0]
         this.buffer = this.buffer.substr(str.length)
         this.process({ url:   str.match(/href="([^"]*)"/)[1],
                        title: str.match(/description="([^"]*)"/)[1],
                        tags:  str.match(/tag="([^"]*)"/)[1].split(" ") })
       } else {
-      sys.puts("finishing");
         this.finish();
       }
     }
@@ -32,7 +30,6 @@ fs.readFile(dataFile, function(err, data) {
   reader.process = function(postData) {
     var self = this;
     Bookmark.store(user, postData, function(bookmark) {
-      sys.puts("Stored " + bookmark.title)
       reader.read()
     })
   }
